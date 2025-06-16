@@ -4,11 +4,14 @@ set -e
 
 echo "=== Hallenjay Boundless Prover Setup Script ==="
 
-# Step 0: Ask for user secrets to create an .env file
-read -p "Paste your PRIVATE_KEY for env file: " PRIVATE_KEY
-read -p "Paste your RPC_URL for env file: " RPC_URL
+# Step 0: Prompt for required secrets
+read -p "Paste your PRIVATE_KEY: " PRIVATE_KEY
+read -p "Paste your RPC_URL: " RPC_URL
+read -p "Paste your BOUNDLESS_MARKET_ADDRESS: " MARKET_ADDRESS
+read -p "Paste your SET_VERIFIER_ADDRESS: " VERIFIER_ADDRESS
+read -p "Paste your ORDER_STREAM_URL: " ORDER_STREAM_URL
 
-# Step 1: Install Docker (if not installed)
+# Step 1: Install Docker
 if ! command -v docker &> /dev/null; then
     echo ">>> Docker not found. Installing Docker..."
     curl -fsSL https://get.docker.com -o get-docker.sh
@@ -19,7 +22,7 @@ else
 fi
 
 # Step 2: Install NVIDIA Docker
-if ! command -v nvidia-docker &> /dev/null; then
+if ! dpkg -l | grep -q nvidia-docker2; then
     echo ">>> Installing NVIDIA Docker runtime..."
     distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
     curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
@@ -58,12 +61,47 @@ echo ">>> Installing Bento CLI and Boundless CLI..."
 cargo install --git https://github.com/risc0/risc0 bento-client --bin bento_cli || true
 cargo install --locked boundless-cli || true
 
-# Step 6: Setup .env.broker
-echo ">>> Setting up environment..."
-cp .env.broker-template .env.broker
-echo "PRIVATE_KEY=\"$PRIVATE_KEY\"" >> .env.broker
-echo "RPC_URL=\"$RPC_URL\"" >> .env.broker
+# Add cargo bin to PATH
+if ! grep -q ".cargo/bin" <<< "$PATH"; then
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+    source ~/.bashrc
+fi
+
+# Step 6: Write full .env.broker file
+echo ">>> Creating .env.broker..."
+cat <<EOF > .env.broker
+# Prover node configs
+
+RUST_LOG=info
+
+REDIS_HOST=redis
+REDIS_IMG=redis:7.2.5-alpine3.19
+
+POSTGRES_HOST=postgres
+POSTGRES_IMG=postgres:16.3-bullseye
+POSTGRES_DB=taskdb
+POSTGRES_PORT=5432
+POSTGRES_USER=worker
+POSTGRES_PASSWORD=password
+
+MINIO_HOST=minio
+MINIO_IMG=minio/minio:RELEASE.2024-05-28T17-19-04Z
+MINIO_ROOT_USER=admin
+MINIO_ROOT_PASS=password
+MINIO_BUCKET=workflow
+
+GRAFANA_IMG=grafana/grafana:11.0.0
+
+SEGMENT_SIZE=21
+RISC0_KECCAK_PO2=17
+
+PRIVATE_KEY=${PRIVATE_KEY}
+BOUNDLESS_MARKET_ADDRESS=${MARKET_ADDRESS}
+SET_VERIFIER_ADDRESS=${VERIFIER_ADDRESS}
+RPC_URL=${RPC_URL}
+ORDER_STREAM_URL=${ORDER_STREAM_URL}
+EOF
 
 echo ""
 echo "🎉 Setup complete!"
-echo "👉 Now run the next script: ./run-boundless.sh"
+echo "👉 Now run: ./run-boundless.sh"
