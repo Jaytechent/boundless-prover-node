@@ -67,10 +67,17 @@ fi
 if ! command -v rzup &> /dev/null; then
     echo ">>> rzup not found. Installing rzup..."
     curl -L https://risczero.com/install | bash
-    source "$HOME/.bashrc"
+
+    if ! grep -q ".risc0/bin" ~/.bashrc; then
+        echo 'export PATH="$HOME/.risc0/bin:$PATH"' >> ~/.bashrc
+    fi
+
+    export PATH="$HOME/.risc0/bin:$PATH"
 else
     echo ">>> rzup already installed."
 fi
+
+
 
 # Step 7: Install Risc Zero Rust toolchain
 echo ">>> Installing Risc Zero Rust toolchain with rzup..."
@@ -115,6 +122,9 @@ SET_VERIFIER_ADDRESS=${VERIFIER_ADDRESS}
 RPC_URL=${RPC_URL}
 ORDER_STREAM_URL=${ORDER_STREAM_URL}
 EOF
+
+# Step 10: Move into boundless folder to prep for run
+cd "$(pwd)/boundless"
 
 echo ""
 echo "🎉 Setup complete!"
