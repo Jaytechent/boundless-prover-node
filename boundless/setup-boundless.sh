@@ -48,26 +48,40 @@ fi
 echo ">>> Running Boundless setup script..."
 sudo ./scripts/setup.sh
 
-# Step 5: Install Rust and CLI tools
+# Step 5: Install Rust (general)
 if ! command -v cargo &> /dev/null; then
     echo ">>> Installing Rust..."
-    curl https://sh.rustup.rs -sSf | sh -s -- -y
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     source $HOME/.cargo/env
 else
     echo ">>> Rust already installed."
 fi
 
-echo ">>> Installing Bento CLI and Boundless CLI..."
-cargo install --git https://github.com/risc0/risc0 bento-client --bin bento_cli || true
-cargo install --locked boundless-cli || true
-
-# Add cargo bin to PATH
+# Ensure cargo bin is in PATH
 if ! grep -q ".cargo/bin" <<< "$PATH"; then
     echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
     source ~/.bashrc
 fi
 
-# Step 6: Write full .env.broker file
+# Step 6: Install rzup (Risc0 Updater)
+if ! command -v rzup &> /dev/null; then
+    echo ">>> rzup not found. Installing rzup..."
+    curl -L https://risczero.com/install | bash
+    source "$HOME/.bashrc"
+else
+    echo ">>> rzup already installed."
+fi
+
+# Step 7: Install Risc Zero Rust toolchain
+echo ">>> Installing Risc Zero Rust toolchain with rzup..."
+rzup install rust
+
+# Step 8: Install CLI tools
+echo ">>> Installing Bento CLI and Boundless CLI..."
+cargo install --git https://github.com/risc0/risc0 bento-client --bin bento_cli || true
+cargo install --locked boundless-cli || true
+
+# Step 9: Write .env.broker file
 echo ">>> Creating .env.broker..."
 cat <<EOF > .env.broker
 # Prover node configs
